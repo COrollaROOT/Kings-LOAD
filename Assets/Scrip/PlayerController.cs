@@ -9,6 +9,10 @@ public class PlayerController : MonoBehaviour
     [Header("Refs")]
     [SerializeField] Rigidbody playerRigidbody;
     [SerializeField] Transform cameraTransform;
+    
+    [Header("Interact")]
+    [SerializeField] KeyCode interactKey = KeyCode.E;
+    [SerializeField] InteractionSensor interactionSensor;
 
     PlayerStateMachine stateMachine;
     PlayerIdleState idleState;
@@ -30,6 +34,12 @@ public class PlayerController : MonoBehaviour
 
         if (cameraTransform == null && Camera.main != null)
             cameraTransform = Camera.main.transform;
+        
+        if (interactionSensor == null)
+            interactionSensor = GetComponent<InteractionSensor>();
+
+        if (interactionSensor != null)
+            interactionSensor.TargetChanged += OnTargetChanged;
 
         stateMachine = new PlayerStateMachine();
         idleState = new PlayerIdleState(this, stateMachine);
@@ -42,6 +52,8 @@ public class PlayerController : MonoBehaviour
     {
         ReadMoveInput();
         BuildMoveDirection();
+        
+        TryInteractInput();
 
         stateMachine.Tick();
     }
@@ -58,6 +70,19 @@ public class PlayerController : MonoBehaviour
         float y = Input.GetAxisRaw("Vertical");
         moveInput = new Vector2(x, y);
         moveInput = Vector2.ClampMagnitude(moveInput, 1f);
+    }
+    
+    void TryInteractInput()
+    {
+        if (interactionSensor == null)
+            return;
+
+        if (Input.GetKeyDown(interactKey))
+        {
+            bool hasInteracted = interactionSensor.TryInteract(this);
+            if (hasInteracted)
+                Debug.Log("Interact Success");
+        }
     }
 
     void BuildMoveDirection()
@@ -94,5 +119,13 @@ public class PlayerController : MonoBehaviour
     public void ChangeToMove()
     {
         stateMachine.ChangeState(moveState);
+    }
+    
+    void OnTargetChanged(IInteractable target)
+    {
+        if (target == null)
+            Debug.Log("Interact Target: None");
+        else
+            Debug.Log($"Interact Target: {target.PromptText}");
     }
 }
